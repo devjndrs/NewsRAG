@@ -1,0 +1,63 @@
+import os
+import logging
+from dotenv import load_dotenv # Nueva para cargar el archivo .env
+from google import genai # La nueva librería
+from supabase import create_client
+from tqdm import tqdm
+
+# Cargar variables desde el archivo .env
+load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+# Configuración
+URL = os.getenv("SUPABASE_URL")
+KEY = os.getenv("SUPABASE_KEY")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+
+if not all([URL, KEY, GEMINI_KEY]):
+    logger.error("Faltan variables de entorno. Asegúrate de que el archivo .env existe.")
+    exit()
+
+supabase = create_client(URL, KEY)
+client = genai.Client(api_key=GEMINI_KEY)
+
+def get_embedding(text):
+    try:
+        # La forma correcta de llamar al modelo con la nueva librería
+        result = client.models.embed_content(
+            model="text-embedding-004",
+            contents=text,
+            config={'task_type': 'RETRIEVAL_DOCUMENT'}
+        )
+        # Acceso a los valores del embedding
+        return result.embeddings[0].values
+    except Exception as e:
+        logger.error(f"Error en Gemini: {e}")
+        return None
+
+# --- Resto del código igual ---
+data = [
+    {"title": "Nuevo chip de Nvidia", "content": "La serie 5000 promete un ahorro de energía del 30%", "category": "Hardware"},
+    {"title": "Lanzamiento de Gemini 1.5", "content": "Google actualiza su modelo de lenguaje con mayor contexto", "category": "IA"}
+]
+
+records_to_insert = []
+for item in tqdm(data, desc="Procesando"):
+    embedding = get_embedding(item['content'])
+    if embedding:
+        records_to_insert.append({
+            "title": item['title'],
+            "content": item['content'],
+            "category": item['category'],
+            "embedding": embedding
+        })
+
+if records_to_insert:
+    supabase.table("tech_insights").insert(records_to_insert).execute()
+    logger.info("✅ ¡Carga masiva completada!")

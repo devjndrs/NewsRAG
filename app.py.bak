@@ -1,0 +1,84 @@
+import streamlit as st
+
+# 1. Configuración de página inmediata
+st.set_page_config(page_title="Tech-Insights", layout="wide")
+
+st.title("🚀 Tech-Insights: Buscador Semántico")
+
+# 2. Configuración optimizada con caché (Esto evita reconectar cada vez que recargas)
+@st.cache_resource(show_spinner=False)
+def init_connections():
+    # Movemos los imports aquí dentro para que solo se carguen cuando sea necesario
+    # y se guarden en memoria (no se reimportan en cada rerun si ya están cacheados)
+    from dotenv import load_dotenv
+    from google import genai
+    from supabase import create_client
+    import os
+
+    load_dotenv()
+    
+    if not os.getenv("SUPABASE_URL"):
+        raise ValueError("Falta SUPABASE_URL en el archivo .env")
+        
+    supa_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+    genai_cli = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    
+    return supa_client, genai_cli
+
+if "initialized" not in st.session_state:
+    with st.status("Conectando con la infraestructura de datos...", expanded=True) as status:
+        try:
+            # Esta llamada ahora es instantánea si ya se ejecutó antes en el servidor
+            supa, gemini = init_connections()
+            
+            st.session_state.supabase = supa
+            st.session_state.genai_client = gemini
+            st.session_state.initialized = True
+            
+            status.update(label="✅ Conexión establecida (Cacheada)", state="complete", expanded=False)
+        except Exception as e:
+            st.error(f"Error crítico de conexión: {e}")
+            st.stop()
+
+# 3. La interfaz solo se muestra si ya se inicializó
+if st.session_state.get("initialized"):
+    query = st.text_input("¿Qué tecnología quieres investigar?")
+
+    if query:
+        with st.spinner("Buscando en la base de datos vectorial..."):
+            try:
+                # 3. Generar embedding de la consulta del usuario
+                # Usamos 'RETRIEVAL_QUERY' porque es una búsqueda rápida
+                response = st.session_state.genai_client.models.embed_content(
+                    model="text-embedding-004",
+                    contents=query,
+                    config={'task_type': 'RETRIEVAL_QUERY'}
+                )
+                query_embedding = response.embeddings[0].values
+
+                # 4. Llamar a la función RPC de Supabase (la que creamos al inicio)
+                result = st.session_state.supabase.rpc("match_insights", {
+                    "query_embedding": query_embedding,
+                    "match_threshold": 0.4, # Ajusta esto (0.0 a 1.0) para ser más o menos estricto
+                    "match_count": 5
+                }).execute()
+
+                # 5. Mostrar resultados
+                if result.data:
+                    st.subheader(f"Resultados para: '{query}'")
+                    for res in result.data:
+                        with st.expander(f"📌 {res['title']} - Categoria: {res['category']}"):
+                            st.write(res['content'])
+                else:
+                    st.info("No se encontraron resultados muy parecidos. Intenta con otra frase.")
+
+            except Exception as e:
+                st.error(f"Hubo un error: {e}")
+
+# --- Barra lateral informativa ---
+st.sidebar.info("""
+**Data Engineering Stack:**
+- **DB:** Supabase (Postgres + pgvector)
+- **Embeddings:** Google Gemini (text-embedding-004)
+- **Frontend:** Streamlit
+""")
