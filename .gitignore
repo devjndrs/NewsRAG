@@ -5,6 +5,12 @@ build/
 dist/
 wheels/
 *.egg-info
+uv.lock
+app.py.bak
+ingest_data.py.bak
+
+#Synthetic data
+data/
 
 # Virtual environments
 .venv

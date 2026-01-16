@@ -15,6 +15,7 @@ class SupabaseDatabase(VectorDatabase):
                 "title": i.title,
                 "content": i.content,
                 "category": i.category,
+                "url": i.url,
                 "embedding": i.embedding
             }
             for i in insights
@@ -35,6 +36,19 @@ class SupabaseDatabase(VectorDatabase):
                     title=item['title'],
                     content=item['content'],
                     category=item['category'],
+                    url=item.get('url'),
                     id=item.get('id')
                 ))
         return insights
+
+    def get_existing_urls(self, urls: List[str]) -> List[str]:
+        if not urls:
+            return []
+        
+        # Filtramos en la base de datos qué URLs de la lista ya existen
+        try:
+            result = self.client.table(self.table_name).select("url").in_("url", urls).execute()
+            return [item['url'] for item in result.data] if result.data else []
+        except Exception as e:
+            print(f"Error checking existing URLs: {e}")
+            return []
