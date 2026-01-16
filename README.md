@@ -37,32 +37,11 @@ src/
 └── ui/              # Interfaz de Usuario (Streamlit)
 ```
 
-## 🚀 Instalación y Uso
+## 🚀 Prueba el Sistema en Vivo
 
-1.  **Clonar el repositorio**:
-    ```bash
-    git clone https://github.com/tu-usuario/daily-resume.git
-    cd daily-resume
-    ```
+¡Interactúa con la aplicación desplegada y analiza el mercado en tiempo real!
 
-2.  **Configurar Variables de Entorno**:
-    Crea un archivo `.env` en la raíz:
-    ```env
-    SUPABASE_URL="tu_url"
-    SUPABASE_KEY="tu_key"
-    GEMINI_API_KEY="tu_api_key_google"
-    GUARDIAN_API_KEY="tu_api_key_guardian"
-    ```
-
-3.  **Instalar dependencias**:
-    ```bash
-    uv sync
-    ```
-
-4.  **Ejecutar la Aplicación**:
-    ```bash
-    streamlit run src/ui/main.py
-    ```
+👉 **[Daily Resume App](https://aidailynews-jndrs.streamlit.app/)**
 
 ## 👨‍💻 Autor
 **Junior Andres Flores**  
